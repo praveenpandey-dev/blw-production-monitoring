@@ -13,6 +13,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAuth, Role } from "../context/AuthContext.tsx";
+import locomotiveBg from "./3834ba35-63e7-4654-af36-2ae01f864985.png";
 
 export default function Login() {
   const { login, isAuthenticated, user } = useAuth();
@@ -277,7 +278,7 @@ export default function Login() {
         <div
           className="w-full h-full rounded-[28px] overflow-hidden relative shadow-2xl flex flex-col justify-end p-12 xl:p-16 bg-cover bg-center text-white"
           style={{
-            backgroundImage: "url('/src/pages/3834ba35-63e7-4654-af36-2ae01f864985.png')"
+            backgroundImage: `url(${locomotiveBg})`
           }}
         >
           {/* Dark gradient layer */}
