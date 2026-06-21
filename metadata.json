@@ -1,0 +1,6 @@
+{
+  "name": "Production Monitoring System",
+  "description": "Enterprise-grade Production Monitoring System for BLW locomotives featuring sidebar navigation, search controls, and status monitoring.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
