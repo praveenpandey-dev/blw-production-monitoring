@@ -3,8 +3,11 @@
 -- Run this in your Supabase project's SQL Editor
 -- ============================================================
 
--- 1. CREATE users TABLE
-create table if not exists public.users (
+-- 1. DROP EXISTING TABLE (to clean up schema mismatches)
+DROP TABLE IF EXISTS public.users CASCADE;
+
+-- 2. CREATE users TABLE
+create table public.users (
   id uuid references auth.users(id) on delete cascade primary key,
   name text not null,
   email text unique not null,

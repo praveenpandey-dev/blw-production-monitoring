@@ -131,32 +131,59 @@ async function seed() {
   console.log("🚀 BLW PMS — Seeding Supabase users...\n");
 
   let successCount = 0;
-  let skipCount = 0;
   let errorCount = 0;
+
+  // Fetch all existing Auth users to avoid running into "already registered" errors
+  let existingAuthUsers: any[] = [];
+  try {
+    const { data: authUsersData, error: listError } = await supabase.auth.admin.listUsers({
+      perPage: 1000,
+    });
+    if (listError) {
+      console.warn("⚠️  Could not list existing Auth users:", listError.message);
+    } else {
+      existingAuthUsers = authUsersData?.users || [];
+    }
+  } catch (err: any) {
+    console.warn("⚠️  Could not list existing Auth users:", err.message || err);
+  }
 
   for (const u of USERS) {
     process.stdout.write(`  → ${u.name} (${u.email}) [${u.role}] ... `);
 
-    // 1. Create Auth user
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: u.email,
-      password: DEFAULT_PASSWORD,
-      email_confirm: true,
-      user_metadata: { name: u.name, role: u.role },
-    });
+    let uid = "";
+    
+    // Check if user already exists in Auth
+    const existing = existingAuthUsers.find(
+      (user) => user.email?.toLowerCase() === u.email.toLowerCase()
+    );
 
-    if (authError) {
-      if (authError.message.includes("already been registered") || authError.message.includes("already exists")) {
-        console.log("⏭  already exists (skipped)");
-        skipCount++;
+    if (existing) {
+      uid = existing.id;
+      // Force update password to DEFAULT_PASSWORD so that existing users get their password reset/synced
+      const { error: updateError } = await supabase.auth.admin.updateUserById(uid, {
+        password: DEFAULT_PASSWORD,
+        user_metadata: { name: u.name, role: u.role },
+      });
+      if (updateError) {
+        console.warn(`⚠️  (Could not reset password: ${updateError.message}) `);
+      }
+    } else {
+      // 1. Create Auth user
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: u.email,
+        password: DEFAULT_PASSWORD,
+        email_confirm: true,
+        user_metadata: { name: u.name, role: u.role },
+      });
+
+      if (authError) {
+        console.log(`❌ Auth error: ${authError.message}`);
+        errorCount++;
         continue;
       }
-      console.log(`❌ Auth error: ${authError.message}`);
-      errorCount++;
-      continue;
+      uid = authData.user.id;
     }
-
-    const uid = authData.user.id;
 
     // 2. Insert profile into users table
     const { error: dbError } = await supabase.from("users").upsert({
@@ -172,10 +199,14 @@ async function seed() {
     }, { onConflict: "id" });
 
     if (dbError) {
-      console.log(`⚠️  Auth created but DB insert failed: ${dbError.message}`);
+      console.log(`❌ DB upsert failed: ${dbError.message}`);
       errorCount++;
     } else {
-      console.log("✅ Created");
+      if (existing) {
+        console.log("✅ Synced DB Row");
+      } else {
+        console.log("✅ Created Auth & DB Row");
+      }
       successCount++;
     }
 
@@ -184,8 +215,7 @@ async function seed() {
   }
 
   console.log(`\n${"─".repeat(50)}`);
-  console.log(`✅ Created:  ${successCount}`);
-  console.log(`⏭  Skipped:  ${skipCount}`);
+  console.log(`✅ Success:  ${successCount}`);
   console.log(`❌ Errors:   ${errorCount}`);
   console.log(`${"─".repeat(50)}`);
   console.log(`\n🔐 Default password: ${DEFAULT_PASSWORD}`);
